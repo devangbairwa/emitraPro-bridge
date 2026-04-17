@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Emitra Bridge | Document Sync</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Outfit', sans-serif; -webkit-tap-highlight-color: transparent; }
+        .glass { background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.3); }
+        .pulse { animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { opacity: 0.4; scale: 0.98; } 50% { opacity: 1; scale: 1; } 100% { opacity: 0.4; scale: 0.98; } }
+        .gradient-bg { background: radial-gradient(circle at top right, #e0faff, #ffffff, #f0f7ff); min-height: 100vh; }
+    </style>
+</head>
+<body class="gradient-bg overflow-hidden">
+    <!-- Header -->
+    <div class="fixed top-0 left-0 right-0 p-6 flex items-center justify-between z-50">
+        <div class="flex flex-col">
+            <h1 class="text-xl font-black uppercase tracking-tighter text-slate-900 line-clamp-1">Emitra Pro</h1>
+            <div id="status-indicator" class="flex items-center space-x-1.5 mt-0.5">
+                <div id="status-dot" class="w-1.5 h-1.5 rounded-full bg-slate-300"></div>
+                <span id="status-text" class="text-[9px] font-black uppercase tracking-widest text-slate-400">Initializing...</span>
+            </div>
+        </div>
+        <div class="w-10 h-10 rounded-2xl bg-slate-900 flex items-center justify-center shadow-lg">
+            <svg class="text-white w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+        </div>
+    </div>
+
+    <!-- Main Experience -->
+    <main class="h-screen flex flex-col items-center justify-center px-8 text-center pt-20">
+        
+        <div id="initial-view" class="space-y-12 w-full max-w-sm">
+            <div class="relative">
+                <div class="absolute inset-0 bg-cyan-400 blur-[100px] opacity-20 pulse"></div>
+                <div class="relative glass rounded-[48px] p-12 shadow-2xl">
+                    <svg class="w-20 h-20 text-cyan-600 mx-auto mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+                    <h2 class="text-2xl font-black text-slate-900 mb-2">Sync Files</h2>
+                    <p class="text-sm text-slate-500 font-medium">Capture or select documents to send to the workspace.</p>
+                </div>
+            </div>
+
+            <div class="space-y-4">
+                <button onclick="document.getElementById('file-input').click()" class="w-full py-5 rounded-[24px] bg-slate-900 text-white font-black uppercase tracking-widest shadow-xl shadow-slate-900/20 active:scale-95 transition-all text-xs">
+                    Choose Documents
+                </button>
+                <button onclick="document.getElementById('file-input').click()" class="w-full py-5 rounded-[24px] glass text-slate-900 font-black uppercase tracking-widest active:scale-95 transition-all text-xs flex items-center justify-center">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    Take Photo
+                </button>
+                <input type="file" id="file-input" multiple class="hidden" onchange="handleFiles(event)">
+            </div>
+        </div>
+
+        <!-- Progress View -->
+        <div id="upload-view" class="hidden w-full max-w-sm space-y-8">
+            <div class="glass rounded-[40px] p-8">
+                <div class="w-16 h-16 rounded-full border-4 border-cyan-500 border-t-transparent animate-spin mx-auto mb-6"></div>
+                <h3 id="upload-status" class="text-xl font-black text-slate-900 mb-2">Syncing...</h3>
+                <div id="file-list" class="space-y-2 mt-6 max-h-48 overflow-y-auto pr-2">
+                    <!-- Files will appear here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Success View -->
+        <div id="success-view" class="hidden w-full max-w-sm space-y-6">
+            <div class="glass rounded-[40px] p-12 flex flex-col items-center">
+                <div class="w-20 h-20 rounded-full bg-emerald-500 flex items-center justify-center text-white mb-6 shadow-xl shadow-emerald-500/30">
+                    <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                </div>
+                <h2 class="text-2xl font-black text-slate-900 mb-2">Transfer Complete</h2>
+                <p class="text-sm text-slate-500 font-medium">Your documents are now available in the Emitra workspace.</p>
+                <button onclick="location.reload()" class="mt-8 text-xs font-black uppercase tracking-widest text-cyan-600 underline">Send More</button>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const statusDot = document.getElementById('status-dot');
+        const statusText = document.getElementById('status-text');
+        const initialView = document.getElementById('initial-view');
+        const uploadView = document.getElementById('upload-view');
+        const successView = document.getElementById('success-view');
+        const fileList = document.getElementById('file-list');
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const targetPeerId = urlParams.get('target');
+
+        if (!targetPeerId) {
+            statusText.textContent = "Error: Invalid Link";
+            statusDot.className = "w-1.5 h-1.5 rounded-full bg-rose-500";
+        }
+
+        const peer = new Peer();
+        let conn;
+
+        peer.on('open', (id) => {
+            console.log('Mobile Peer ID:', id);
+            connectToDesktop();
+        });
+
+        function connectToDesktop() {
+            if (!targetPeerId) return;
+            
+            statusText.textContent = "Bridging...";
+            conn = peer.connect(targetPeerId);
+
+            conn.on('open', () => {
+                statusText.textContent = "Active Link";
+                statusDot.className = "w-1.5 h-1.5 rounded-full bg-emerald-500";
+            });
+
+            conn.on('error', (err) => {
+                statusText.textContent = "Connection Failed";
+                statusDot.className = "w-1.5 h-1.5 rounded-full bg-rose-500";
+            });
+        }
+
+        async function handleFiles(event) {
+            const files = event.target.files;
+            if (!files.length || !conn) return;
+
+            initialView.classList.add('hidden');
+            uploadView.classList.remove('hidden');
+
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                
+                // Visual feedback
+                const item = document.createElement('div');
+                item.className = "flex items-center justify-between p-3 rounded-xl bg-slate-100 text-left";
+                item.innerHTML = `<span class="text-[10px] font-bold text-slate-700 truncate w-32">${file.name}</span><span id="prog-${i}" class="text-[9px] font-black text-cyan-600">Pending</span>`;
+                fileList.appendChild(item);
+
+                try {
+                    const buffer = await file.arrayBuffer();
+                    conn.send({
+                        type: 'file-transfer',
+                        name: file.name,
+                        mimeType: file.type,
+                        size: file.size,
+                        buffer: buffer
+                    });
+                    document.getElementById(`prog-${i}`).textContent = "Synced";
+                    document.getElementById(`prog-${i}`).className = "text-[9px] font-black text-emerald-500";
+                } catch (err) {
+                    document.getElementById(`prog-${i}`).textContent = "Failed";
+                    document.getElementById(`prog-${i}`).className = "text-[9px] font-black text-rose-500";
+                }
+            }
+
+            // Short delay to ensure last msg is sent
+            setTimeout(() => {
+                uploadView.classList.add('hidden');
+                successView.classList.remove('hidden');
+            }, 1000);
+        }
+    </script>
+</body>
+</html>
